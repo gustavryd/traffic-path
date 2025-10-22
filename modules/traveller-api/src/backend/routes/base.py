@@ -11,13 +11,9 @@ from .. import conf
 # from .utils import RequestPrincipal # NOTE: uncomment to use auth
 # from .utils import DBSession # NOTE: uncomment to use postgres
 # from .utils import CouchbaseDB
-from .traffic import router as traffic_router
 
 logger = log.get_logger(__name__)
 router = APIRouter()
-
-# Include traffic routes
-router.include_router(traffic_router)
 
 #### Utilities ####
 
@@ -45,29 +41,6 @@ def get_app_version() -> str:
 @router.get("/")
 async def root():
     return {"message": "Hello World"}
-
-@router.get("/api/config")
-async def get_config_root(request: Request):
-    """Get configuration (root-level endpoint for backward compatibility)."""
-    try:
-        traffic_generator = request.app.state.traffic_generator
-        config = traffic_generator.get_config()
-        return {"success": True, "data": config}
-    except Exception as e:
-        logger.error(f"Error getting config: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.post("/api/config")
-async def update_config_root(request: Request, config_data: dict):
-    """Update configuration (root-level endpoint for backward compatibility)."""
-    try:
-        traffic_generator = request.app.state.traffic_generator
-        traffic_generator.update_config(config_data)
-        updated_config = traffic_generator.get_config()
-        return {"success": True, "data": updated_config}
-    except Exception as e:
-        logger.error(f"Error updating config: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/health")
 async def health_check(

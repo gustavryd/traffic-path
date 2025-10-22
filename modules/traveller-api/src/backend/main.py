@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI
 from .utils import log
 from .routes.base import router
+from .routes.traveller import router as traveller_router
 from . import conf
 
 log.init(conf.get_log_level())
@@ -11,16 +12,6 @@ logger = log.get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize TrafficGenerator
-    from .services.traffic_generator import TrafficGenerator
-    app.state.traffic_generator = TrafficGenerator({
-        'node_count': 20,
-        'road_density': 0.3,
-        'update_interval': 5000
-    })
-    await app.state.traffic_generator.start()
-    logger.info("Traffic generator started")
-
     # Initialize PostgreSQL client if enabled
     if conf.USE_POSTGRES:
         from .clients.postgres import PostgresClient
@@ -79,10 +70,6 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # Stop TrafficGenerator
-    await app.state.traffic_generator.stop()
-    logger.info("Traffic generator stopped")
-
     # Clean up PostgreSQL client if enabled
     if conf.USE_POSTGRES:
         await app.state.postgres_client.close()
@@ -100,7 +87,7 @@ async def lifespan(app: FastAPI):
         await app.state.twilio_client.close()
 
 app = FastAPI(
-    title="Backend API",
+    title="Traveller API",
     version="0.1.0",
     docs_url="/docs",
     lifespan=lifespan,
@@ -108,6 +95,7 @@ app = FastAPI(
 )
 
 app.include_router(router)
+app.include_router(traveller_router)
 
 app.add_middleware(
     CORSMiddleware,

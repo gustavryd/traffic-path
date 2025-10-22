@@ -2,9 +2,15 @@ include:
   - repo: gh:bluetext-io/bluetext
   - modules/graph-api
   - modules/traffic-api
-
+  - modules/traveller-api
+  - modules/temporal
+  - modules/postgres
 tools:
   default:
     run:
       - tool: "graph-api"
       - tool: traffic-api
+      - tool: "traveller-api"
+      - tool: "temporal"
+      - tool: "temporal-ui"
+      - tool: "postgres"
