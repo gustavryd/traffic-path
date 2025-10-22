@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic Graph Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .graph-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            position: relative;
+        }
+
+        #graphCanvas {
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            cursor: pointer;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            max-height: 700px;
+            overflow-y: auto;
+        }
+
+        .connection-status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .status-connected {
+            background: #4caf50;
+            color: white;
+        }
+
+        .status-disconnected {
+            background: #f44336;
+            color: white;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+
+        .legend {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+
+        .legend-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 8px 0;
+        }
+
+        .legend-line {
+            width: 40px;
+            height: 4px;
+            border-radius: 2px;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #2196F3;
+        }
+
+        .incidents-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .incident-item {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            border-left: 4px solid #f44336;
+            font-size: 0.9em;
+        }
+
+        .controls {
+            display: grid;
+            gap: 10px;
+        }
+
+        button {
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .info-popup {
+            position: fixed;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: none;
+            z-index: 1000;
+            max-width: 300px;
+            pointer-events: none;
+        }
+
+        .info-popup.show {
+            display: block;
+        }
+
+        h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        h3 {
+            color: #666;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚦 Real-Time Traffic Graph Visualization</h1>
+        
+        <div class="dashboard">
+            <div class="graph-container">
+                <div id="connectionStatus" class="connection-status status-disconnected">
+                    Disconnected
+                </div>
+                <canvas id="graphCanvas" width="900" height="600"></canvas>
+                <div class="legend">
+                    <div class="legend-title">Legend</div>
+                    <div class="legend-item">
+                        <div class="legend-dot"></div>
+                        <span>Intersection/Node</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-line" style="background: #4caf50;"></div>
+                        <span>Low Traffic (Road)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-line" style="background: #ffeb3b;"></div>
+                        <span>Medium Traffic</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-line" style="background: #ff9800;"></div>
+                        <span>High Traffic</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-line" style="background: #f44336;"></div>
+                        <span>Congestion</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Statistics</h2>
+                <div class="stats">
+                    <div class="stat-box">
+                        <div class="stat-label">Nodes</div>
+                        <div class="stat-value" id="nodeCount">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Roads</div>
+                        <div class="stat-value" id="edgeCount">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Avg Traffic</div>
+                        <div class="stat-value" id="avgTraffic">0%</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Avg Speed</div>
+                        <div class="stat-value" id="avgSpeed">0 mph</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Total Vehicles</div>
+                        <div class="stat-value" id="totalVehicles">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Incidents</div>
+                        <div class="stat-value" id="incidentCount">0</div>
+                    </div>
+                </div>
+
+                <h3>Active Incidents</h3>
+                <div id="incidentsList" class="incidents-list">
+                    <p style="color: #999;">No active incidents</p>
+                </div>
+
+                <h3>Controls</h3>
+                <div class="controls">
+                    <button onclick="createRandomIncident()">Create Random Incident</button>
+                    <button onclick="fetchStats()">Refresh Statistics</button>
+                    <button onclick="toggleConnection()">Reconnect</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="infoPopup" class="info-popup"></div>
+
+    <script>
+        let ws = null;
+        let graphData = { vertices: [], edges: [] };
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Connect to WebSocket
+        function connectWebSocket() {
+            ws = new WebSocket('ws://localhost:3000');
+
+            ws.onopen = () => {
+                console.log('Connected to Traffic API');
+                document.getElementById('connectionStatus').textContent = 'Connected';
+                document.getElementById('connectionStatus').className = 'connection-status status-connected';
+                
+                ws.send(JSON.stringify({ type: 'subscribe' }));
+            };
+
+            ws.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                
+                if (message.type === 'initial' || message.type === 'update') {
+                    graphData = message.data;
+                    drawGraph();
+                    updateIncidents(graphData.incidents);
+                }
+            };
+
+            ws.onclose = () => {
+                console.log('Disconnected from Traffic API');
+                document.getElementById('connectionStatus').textContent = 'Disconnected';
+                document.getElementById('connectionStatus').className = 'connection-status status-disconnected';
+                
+                setTimeout(connectWebSocket, 3000);
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+        }
+
+        // Draw the graph
+        function drawGraph() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (!graphData.vertices || !graphData.edges) return;
+
+            // Draw edges (roads)
+            for (const edge of graphData.edges) {
+                const fromNode = graphData.vertices.find(v => v.id === edge.from);
+                const toNode = graphData.vertices.find(v => v.id === edge.to);
+                
+                if (fromNode && toNode) {
+                    const color = getTrafficColor(edge.weight);
+                    const lineWidth = edge.isIncident ? 6 : 4;
+                    
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = lineWidth;
+                    ctx.lineCap = 'round';
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(fromNode.x, fromNode.y);
+                    ctx.lineTo(toNode.x, toNode.y);
+                    ctx.stroke();
+                    
+                    // Draw incident marker
+                    if (edge.isIncident) {
+                        const midX = (fromNode.x + toNode.x) / 2;
+                        const midY = (fromNode.y + toNode.y) / 2;
+                        
+                        ctx.fillStyle = '#f44336';
+                        ctx.beginPath();
+                        ctx.arc(midX, midY, 8, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        ctx.strokeStyle = 'white';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            // Draw vertices (nodes)
+            for (const vertex of graphData.vertices) {
+                ctx.fillStyle = '#2196F3';
+                ctx.beginPath();
+                ctx.arc(vertex.x, vertex.y, 8, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Draw node label
+                ctx.fillStyle = '#333';
+                ctx.font = '10px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(vertex.name.replace('Intersection ', ''), vertex.x, vertex.y - 12);
+            }
+        }
+
+        // Get color based on traffic level
+        function getTrafficColor(weight) {
+            if (weight < 0.25) return '#4caf50'; // Green
+            if (weight < 0.5) return '#ffeb3b';  // Yellow
+            if (weight < 0.75) return '#ff9800'; // Orange
+            return '#f44336'; // Red
+        }
+
+        // Handle canvas click for info display
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // Check if clicked on a node
+            for (const vertex of graphData.vertices) {
+                const dist = Math.sqrt((x - vertex.x) ** 2 + (y - vertex.y) ** 2);
+                if (dist < 10) {
+                    showNodeInfo(vertex, e.clientX, e.clientY);
+                    return;
+                }
+            }
+            
+            // Check if clicked on an edge
+            for (const edge of graphData.edges) {
+                const fromNode = graphData.vertices.find(v => v.id === edge.from);
+                const toNode = graphData.vertices.find(v => v.id === edge.to);
+                
+                if (fromNode && toNode) {
+                    const dist = distanceToLine(x, y, fromNode.x, fromNode.y, toNode.x, toNode.y);
+                    if (dist < 8) {
+                        showEdgeInfo(edge, fromNode, toNode, e.clientX, e.clientY);
+                        return;
+                    }
+                }
+            }
+            
+            hideInfo();
+        });
+
+        function distanceToLine(px, py, x1, y1, x2, y2) {
+            const A = px - x1;
+            const B = py - y1;
+            const C = x2 - x1;
+            const D = y2 - y1;
+            
+            const dot = A * C + B * D;
+            const lenSq = C * C + D * D;
+            let param = -1;
+            
+            if (lenSq !== 0) param = dot / lenSq;
+            
+            let xx, yy;
+            
+            if (param < 0) {
+                xx = x1;
+                yy = y1;
+            } else if (param > 1) {
+                xx = x2;
+                yy = y2;
+            } else {
+                xx = x1 + param * C;
+                yy = y1 + param * D;
+            }
+            
+            const dx = px - xx;
+            const dy = py - yy;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        function showNodeInfo(vertex, x, y) {
+            const popup = document.getElementById('infoPopup');
+            
+            // Find connected edges
+            const connectedEdges = graphData.edges.filter(e => 
+                e.from === vertex.id || e.to === vertex.id
+            );
+            
+            popup.innerHTML = `
+                <h3>${vertex.name}</h3>
+                <p><strong>ID:</strong> ${vertex.id}</p>
+                <p><strong>Connected Roads:</strong> ${connectedEdges.length}</p>
+                <p><strong>Position:</strong> (${Math.round(vertex.x)}, ${Math.round(vertex.y)})</p>
+            `;
+            
+            popup.style.left = `${x + 10}px`;
+            popup.style.top = `${y + 10}px`;
+            popup.classList.add('show');
+        }
+
+        function showEdgeInfo(edge, fromNode, toNode, x, y) {
+            const popup = document.getElementById('infoPopup');
+            
+            popup.innerHTML = `
+                <h3>Road: ${fromNode.name} ↔ ${toNode.name}</h3>
+                <p><strong>Traffic Level:</strong> ${(edge.weight * 100).toFixed(1)}%</p>
+                <p><strong>Speed:</strong> ${edge.speed} mph</p>
+                <p><strong>Vehicles:</strong> ${edge.vehicleCount}</p>
+                <p><strong>Distance:</strong> ${edge.distance} units</p>
+                ${edge.isIncident ? `<p style="color: #f44336;"><strong>⚠️ Incident!</strong> Severity: ${(edge.incidentSeverity * 100).toFixed(0)}%</p>` : ''}
+            `;
+            
+            popup.style.left = `${x + 10}px`;
+            popup.style.top = `${y + 10}px`;
+            popup.classList.add('show');
+        }
+
+        function hideInfo() {
+            document.getElementById('infoPopup').classList.remove('show');
+        }
+
+        // Update incidents list
+        function updateIncidents(incidents) {
+            const listElement = document.getElementById('incidentsList');
+            
+            if (!incidents || incidents.length === 0) {
+                listElement.innerHTML = '<p style="color: #999;">No active incidents</p>';
+                return;
+            }
+            
+            listElement.innerHTML = incidents.map(incident => `
+                <div class="incident-item">
+                    <strong>${incident.type.toUpperCase()}</strong><br>
+                    Road: ${incident.from} → ${incident.to}<br>
+                    Severity: ${(incident.severity * 100).toFixed(0)}%<br>
+                    Duration: ${Math.round((incident.endTime - Date.now()) / 1000)}s remaining
+                </div>
+            `).join('');
+        }
+
+        // Fetch and update statistics
+        async function fetchStats() {
+            try {
+                const response = await fetch('http://localhost:3000/api/traffic/stats');
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('nodeCount').textContent = data.data.totalVertices;
+                    document.getElementById('edgeCount').textContent = data.data.totalEdges;
+                    document.getElementById('avgTraffic').textContent = 
+                        `${(data.data.averageTrafficLevel * 100).toFixed(1)}%`;
+                    document.getElementById('avgSpeed').textContent = 
+                        `${data.data.averageSpeed} mph`;
+                    document.getElementById('totalVehicles').textContent = 
+                        data.data.totalVehicles;
+                    document.getElementById('incidentCount').textContent = 
+                        data.data.activeIncidents;
+                }
+            } catch (error) {
+                console.error('Error fetching stats:', error);
+            }
+        }
+
+        // Create random incident
+        async function createRandomIncident() {
+            if (graphData.edges.length === 0) return;
+            
+            const randomEdge = graphData.edges[Math.floor(Math.random() * graphData.edges.length)];
+            const severity = Math.random() * 0.5 + 0.5;
+            const duration = 30000 + Math.random() * 60000;
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/traffic/incident', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        edgeId: randomEdge.id, 
+                        severity, 
+                        duration 
+                    })
+                });
+                
+                const data = await response.json();
+                console.log('Incident created:', data);
+            } catch (error) {
+                console.error('Error creating incident:', error);
+            }
+        }
+
+        // Toggle connection
+        function toggleConnection() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.close();
+            } else {
+                connectWebSocket();
+            }
+        }
+
+        // Initialize
+        connectWebSocket();
+        setInterval(fetchStats, 2000);
+
+        // Hide info when clicking outside canvas
+        document.addEventListener('click', (e) => {
+            if (e.target !== canvas) {
+                setTimeout(hideInfo, 100);
+            }
+        });
+    </script>
+</body>
+</html>

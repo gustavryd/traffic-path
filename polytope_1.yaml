@@ -1,6 +1,6 @@
 include:
   - repo: gh:bluetext-io/bluetext
-  - modules/graph-api
+  - modules/nyc-traffic-viz
 
 modules:
   traffic-api:
@@ -29,5 +29,9 @@ modules:
 tools:
   default:
     run:
-      - tool: "graph-api"
+      - tool: "nyc-traffic-viz"
+  
+  traffic-api:
+    description: "Start the Node.js traffic data API service"
+    run:
       - module: traffic-api
