@@ -1,0 +1,7 @@
+include:
+  - repo: gh:bluetext-io/bluetext
+  - modules/graph-api
+tools:
+  default:
+    run:
+      - tool: "graph-api"
