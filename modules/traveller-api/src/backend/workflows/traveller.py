@@ -31,21 +31,38 @@ async def fetch_traffic_model() -> dict:
     activity.logger.info("Fetching traffic model from traffic-api")
     async with httpx.AsyncClient(timeout=30.0) as client:
         # Traffic generator is Node.js on host at port 3000
-        response = await client.get("http://host.docker.internal:3000/api/traffic/current")
+        response = await client.get("http://traffic-api:3031/api/traffic/current")
         response.raise_for_status()
         return response.json()
 
 
 @activity.defn
-async def fetch_route(start_node: str, end_node: str) -> dict:
+async def fetch_route(start_node: str, end_node: str, traffic_model: dict) -> dict:
     """Fetch route from graph-api."""
     import httpx
     activity.logger.info(f"Fetching route from {start_node} to {end_node}")
+    
+    # Transform traffic model to match graph-api expected format
+    graph_data = {
+        "vertices": [
+            {"id": v["id"], "name": v["name"]}
+            for v in traffic_model.get("vertices", [])
+        ],
+        "edges": [
+            {"from": e["from"], "to": e["to"], "weight": e["weight"]}
+            for e in traffic_model.get("edges", [])
+        ]
+    }
+    
     async with httpx.AsyncClient(timeout=30.0) as client:
         # Graph API is a Polytope service
         response = await client.post(
-            "http://graph-api:3030/shortest-path",
-            json={"start_node": start_node, "end_node": end_node}
+            "http://graph-api:3030/graph/shortest-path",
+            json={
+                "graph": graph_data,
+                "start": start_node,
+                "end": end_node
+            }
         )
         response.raise_for_status()
         return response.json()
@@ -112,11 +129,11 @@ class TravellerWorkflow:
         # Fetch route
         route_data = await workflow.execute_activity(
             fetch_route,
-            args=[self.current_node, self.end_node],
+            args=[self.current_node, self.end_node, traffic_model],
             start_to_close_timeout=timedelta(seconds=30),
         )
         
-        self.route = route_data.get("route", [])
+        self.route = route_data.get("path", [])
         self.route_index = 0
         workflow.logger.info(f"New route calculated: {self.route}")
     

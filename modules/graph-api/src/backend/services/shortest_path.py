@@ -30,7 +30,7 @@ class ShortestPathService:
             return ShortestPathResponse(
                 path=[],
                 vertices=[],
-                total_distance=float('inf'),
+                total_distance=-1,
                 success=False,
                 message=f"Start vertex '{start_id}' not found in graph"
             )
@@ -39,7 +39,7 @@ class ShortestPathService:
             return ShortestPathResponse(
                 path=[],
                 vertices=[],
-                total_distance=float('inf'),
+                total_distance=-1,
                 success=False,
                 message=f"End vertex '{end_id}' not found in graph"
             )
@@ -90,7 +90,7 @@ class ShortestPathService:
             return ShortestPathResponse(
                 path=[],
                 vertices=[],
-                total_distance=float('inf'),
+                total_distance=-1,
                 success=False,
                 message=f"No path found between '{start_id}' and '{end_id}'"
             )

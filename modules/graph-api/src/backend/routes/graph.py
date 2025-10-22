@@ -29,5 +29,8 @@ async def find_shortest_path(request: ShortestPathRequest) -> ShortestPathRespon
             raise HTTPException(status_code=404, detail=result.message)
         
         return result
+    except HTTPException:
+        # Re-raise HTTPExceptions without wrapping them
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error computing shortest path: {str(e)}")
