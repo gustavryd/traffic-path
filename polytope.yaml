@@ -1,33 +1,10 @@
 include:
   - repo: gh:bluetext-io/bluetext
   - modules/graph-api
-
-modules:
-  traffic-api:
-    image: node:20-alpine
-    working_dir: /app
-    ports:
-      - "3000:3000"
-    environment:
-      PORT: "3000"
-      NODE_ENV: "production"
-    mounts:
-      - path: /app
-        source:
-          type: host
-          path: .
-    command: |
-      npm install
-      npm start
-    services:
-      - id: traffic-api
-        ports:
-          - protocol: http
-            port: 3000
-            expose-as: 3000
+  - modules/traffic-api
 
 tools:
   default:
     run:
       - tool: "graph-api"
-      - module: traffic-api
+      - tool: traffic-api
