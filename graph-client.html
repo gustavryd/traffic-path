@@ -277,6 +277,18 @@
 
                 <h3>Controls</h3>
                 <div class="controls">
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <input 
+                            type="number" 
+                            id="nodeCountInput" 
+                            min="5" 
+                            max="100" 
+                            value="20" 
+                            placeholder="Nodes (5-100)"
+                            style="flex: 1; padding: 8px; border: 2px solid #667eea; border-radius: 5px; font-size: 14px;"
+                        />
+                        <button onclick="regenerateGraph()" style="flex: 1;">Regenerate Graph</button>
+                    </div>
                     <button onclick="createRandomIncident()">Create Random Incident</button>
                     <button onclick="fetchStats()">Refresh Statistics</button>
                     <button onclick="toggleConnection()">Reconnect</button>
@@ -564,6 +576,38 @@
                 console.log('Incident created:', data);
             } catch (error) {
                 console.error('Error creating incident:', error);
+            }
+        }
+
+        // Regenerate graph with new node count
+        async function regenerateGraph() {
+            const nodeCountInput = document.getElementById('nodeCountInput');
+            const nodeCount = parseInt(nodeCountInput.value);
+            
+            if (isNaN(nodeCount) || nodeCount < 5 || nodeCount > 100) {
+                alert('Please enter a valid number of nodes between 5 and 100');
+                return;
+            }
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/traffic/regenerate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nodeCount })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    console.log('Graph regenerated successfully:', data);
+                    // The WebSocket will automatically receive the new graph data
+                    fetchStats();
+                } else {
+                    alert(`Error: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Error regenerating graph:', error);
+                alert('Failed to regenerate graph. Please check the console for details.');
             }
         }
 

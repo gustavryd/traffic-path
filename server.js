@@ -153,6 +153,48 @@ app.post('/api/config', (req, res) => {
   }
 });
 
+// Regenerate graph with new node count
+app.post('/api/traffic/regenerate', (req, res) => {
+  try {
+    const { nodeCount, roadDensity } = req.body;
+    
+    if (nodeCount !== undefined && (nodeCount < 5 || nodeCount > 100)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Node count must be between 5 and 100'
+      });
+    }
+    
+    const config = {};
+    if (nodeCount !== undefined) config.nodeCount = nodeCount;
+    if (roadDensity !== undefined) config.roadDensity = roadDensity;
+    
+    trafficGenerator.updateConfig(config);
+    
+    // Broadcast the new graph to all connected clients
+    const newState = trafficGenerator.getCurrentState();
+    wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify({
+          type: 'initial',
+          data: newState
+        }));
+      }
+    });
+    
+    res.json({
+      success: true,
+      message: 'Graph regenerated successfully',
+      data: trafficGenerator.getConfig()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Get traffic statistics
 app.get('/api/traffic/stats', (req, res) => {
   res.json({
